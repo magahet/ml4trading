@@ -38,9 +38,9 @@ def compute_portvals(start_date, end_date, orders_file, start_val):
         over_leveraged_indexes = leverage[leverage > 2.0].index & trades[trades > 0.0].index
         if len(over_leveraged_indexes) == 0:
             break
-        print 'Trade results in leverage > 2.0. Removing.'
-        print trades.loc[over_leveraged_indexes[0]]
-        print
+        #print 'Trade results in leverage > 2.0. Removing.'
+        #print trades.loc[over_leveraged_indexes[0]]
+        #print
         trades.loc[over_leveraged_indexes[0]] = 0.0
     portval = get_portval(values)
     return portval
