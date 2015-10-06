@@ -1,6 +1,7 @@
 """MC2-P1: Market simulator."""
 
 import pandas as pd
+import sys
 #import numpy as np
 
 from util import get_data
@@ -30,8 +31,17 @@ def compute_portvals(start_date, end_date, orders_file, start_val):
     symbols = list(orders['Symbol'].unique())
     prices = get_prices(symbols, start_date, end_date)
     trades = get_trades(orders, prices, start_date, end_date)
-    holdings = get_holdings(trades, prices, start_val)
-    values = get_values(holdings, prices)
+    while True:
+        holdings = get_holdings(trades, prices, start_val)
+        values = get_values(holdings, prices)
+        leverage = get_leverage(values)
+        over_leveraged_indexes = leverage[leverage > 2.0].index & trades[trades > 0.0].index
+        if len(over_leveraged_indexes) == 0:
+            break
+        print 'Trade results in leverage > 2.0. Removing.'
+        print trades.loc[over_leveraged_indexes[0]]
+        print
+        trades.loc[over_leveraged_indexes[0]] = 0.0
     portval = get_portval(values)
     return portval
 
@@ -46,12 +56,20 @@ def get_values(holdings, prices):
     return holdings * prices
 
 
-def get_holdings(trades, prices, start_val):
+def get_holdings(trades_without_cash, prices, start_val):
     '''Create holdings dataframe with daily positions for each symbol.'''
-    trades_temp = trades.copy()
-    trades_temp['Cash'][0] += start_val
-    holdings = trades_temp.cumsum(axis=0)
-    return holdings
+    trades = trades_without_cash.copy()
+    trades['Cash'][0] += start_val
+    return trades.cumsum(axis=0)
+
+
+def get_leverage(holdings_row):
+    '''Create leverage dataframe calculated from daily holdings.'''
+    stocks = holdings_row.drop(['Cash'], axis=1)
+    cash = holdings_row['Cash']
+    a = stocks.abs().sum(axis=1)
+    b = stocks.sum(axis=1) + cash
+    return a / b
 
 
 def get_trades(orders, prices, start_date, end_date):
@@ -93,11 +111,6 @@ def get_prices(symbols, start_date, end_date):
 
 def clone_df(original, fill=0.0):
     return pd.DataFrame(fill, index=original.index, columns=original.columns)
-
-
-def calc_leverage(longs, shorts, cash):
-    #return (sum(longs) + sum(abs(shorts)) / ((sum(longs) - sum(abs(shorts)) + cash)
-    pass
 
 
 def test_run(start_date, end_date, orders_file, start_val=1000000):
@@ -157,6 +170,14 @@ def test_orders():
     test_run(start_date, end_date, orders_file, start_val)
 
 
+def test_leverage():
+    start_date = '2011-1-10'
+    end_date = '2011-12-20'
+    orders_file = 'orders/leverage.csv'
+    start_val = 1000000
+    test_run(start_date, end_date, orders_file, start_val)
+
+
 def test_orders2():
     start_date = '2011-1-14'
     end_date = '2011-12-14'
@@ -166,4 +187,4 @@ def test_orders2():
 
 
 if __name__ == "__main__":
-    test_orders2()
+    locals()['test_' + sys.argv[1]]()
