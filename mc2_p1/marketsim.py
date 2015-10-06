@@ -2,7 +2,8 @@
 
 import pandas as pd
 import sys
-#import numpy as np
+import os
+import numpy as np
 
 from util import get_data
 from portfolio.analysis import get_portfolio_value, get_portfolio_stats
@@ -35,7 +36,13 @@ def compute_portvals(start_date, end_date, orders_file, start_val):
         holdings = get_holdings(trades, prices, start_val)
         values = get_values(holdings, prices)
         leverage = get_leverage(values)
-        over_leveraged_indexes = leverage[leverage > 2.0].index & trades[trades > 0.0].index
+        leverage_delta = leverage.diff()
+        over_leveraged_indexes = (
+            leverage[leverage > 2.0].index &
+            leverage_delta[leverage_delta > 0.0].index &
+            trades[trades != 0.0].dropna(how='all').index
+        )
+
         if len(over_leveraged_indexes) == 0:
             break
         #print 'Trade results in leverage > 2.0. Removing.'
@@ -154,6 +161,102 @@ def test_run(start_date, end_date, orders_file, start_val=1000000):
     #plot_normalized_data(df_temp, title="Daily portfolio value and $SPX")
 
 
+def test_leverage_suite():
+    '''Run set of leverage tests.
+
+    Copied with permission from https://piazza.com/class/idadrtx18nie1?cid=518
+    '''
+    ordersFile = os.path.join('orders', 'leverageTest1.csv')
+    leo_tester(
+        startDate='2011-01-03', endDate='2011-12-14', ordersFile=ordersFile)
+    ordersFile = os.path.join('orders', 'leverageTest2.csv')
+    leo_tester(
+        startDate='2011-01-03', endDate='2011-12-14', ordersFile=ordersFile)
+    ordersFile = os.path.join('orders', 'leverageTest3.csv')
+    leo_tester(
+        startDate='2011-01-03', endDate='2011-12-14', ordersFile=ordersFile)
+
+
+def leo_tester(startDate, endDate, ordersFile, resultsFile=None):
+    ''' Enhanced testing funtion. Mostly works the same as Tucker's... but it's way better
+
+    Copied with permission from https://piazza.com/class/idadrtx18nie1?cid=518
+
+    Parameters
+    ----------
+        startDate: (str) first date to track
+        endDate: (str) last date to track
+        ordersFile: (str) CSV file to read orders from, ACTUALLY THIS REQUIRES A PATH
+        resultsFile: (str) filepath for saving down answers, defaults to None
+
+    Returns
+    -------
+        None
+    '''
+    start_val = 1000000
+    # Process orders
+    portvals = compute_portvals(startDate, endDate, ordersFile, start_val)
+    if isinstance(portvals, pd.DataFrame):
+        portvals = portvals[portvals.columns[0]]  # if a DataFrame is returned select the first column to get a Series
+    # Get portfolio stats
+    cum_ret, avg_daily_ret, std_daily_ret, sharpe_ratio = get_portfolio_stats(
+        portvals)
+
+    if resultsFile is not None:
+        portvals.to_csv(resultsFile)
+
+    #check answers
+    if ordersFile == os.path.join('orders', 'leverageTest1.csv'):
+        ansFile = os.path.join('orders', 'leverageTest1_ans.csv')
+        testVsAnswer(portvals, ansFile, ordersFile)
+    elif ordersFile == os.path.join('orders', 'leverageTest2.csv'):
+        ansFile = os.path.join('orders', 'leverageTest2_ans.csv')
+        testVsAnswer(portvals, ansFile, ordersFile)
+    elif ordersFile == os.path.join('orders', 'leverageTest3.csv'):
+        ansFile = os.path.join('orders', 'leverageTest3_ans.csv')
+        testVsAnswer(portvals, ansFile, ordersFile)
+
+
+def testVsAnswer(portvals, ansFile, ordersFile):
+    ''' Testing file for individual answers, tries to tell you what you got wrong
+
+    Copied with permission from https://piazza.com/class/idadrtx18nie1?cid=518
+
+    Parameters
+    ----------
+        portvals: (pd.Series) portfolio values series
+        ansFile: (str) CSV file path to read answers from
+        ordersFile: (str) CSV file path to read orders from,
+
+    Returns
+    -------
+        None
+    '''
+    print '*****************************************'
+    print '   Testing %s' % ordersFile
+    ansSeries = pd.Series.from_csv(ansFile)
+    shapeEqual = portvals.shape == ansSeries.shape
+    if not shapeEqual:
+        print '******* ERROR in test: %s ********' % ordersFile
+        print '    user answer: %s' % portvals.shape
+        print '    target answer: %s' % ansSeries.shape
+    else:
+        ax = ansSeries.plot(label='answer')
+        portvals.plot(ax=ax, linestyle='--', label='user', color='r')
+        ax.set_title('Test for %s' % ordersFile)
+        ax.legend()
+        from matplotlib import pyplot as plt
+        plt.show()
+        try:
+            np.testing.assert_array_almost_equal(
+                portvals.values, ansSeries.values, decimal=4)
+            print '****** SUCCESS!  CONGRATULATIONS! *******'
+        except:
+            print '******* ERROR in test: %s ********' % ordersFile
+            print '    see graphs to debug'
+    return None
+
+
 def test_short():
     start_date = '2011-1-05'
     end_date = '2011-1-20'
@@ -174,6 +277,14 @@ def test_leverage():
     start_date = '2011-1-10'
     end_date = '2011-12-20'
     orders_file = 'orders/leverage.csv'
+    start_val = 1000000
+    test_run(start_date, end_date, orders_file, start_val)
+
+
+def test_leverage3():
+    start_date = '2011-1-05'
+    end_date = '2011-2-23'
+    orders_file = 'orders/leverage3.csv'
     start_val = 1000000
     test_run(start_date, end_date, orders_file, start_val)
 
