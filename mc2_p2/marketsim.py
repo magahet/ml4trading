@@ -5,7 +5,7 @@ import sys
 import os
 import numpy as np
 
-from util import get_data
+from util import (get_data, plot_data)
 from portfolio.analysis import get_portfolio_value, get_portfolio_stats
 #from portfolio.analysis import get_portfolio_value, get_portfolio_stats, plot_normalized_data
 
@@ -120,6 +120,14 @@ def clone_df(original, fill=0.0):
     return pd.DataFrame(fill, index=original.index, columns=original.columns)
 
 
+def plot_comparision(portfolio, benchmark):
+    df = portfolio.to_frame()
+    df = df.join(benchmark)
+    df = df.rename(columns={'$SPX': 'SPX', 0: 'Portfolio'})
+    df = df / df.ix[0, :]
+    plot_data(df, title='Daily portfolio value', ylabel='Normalized price')
+
+
 def test_run(start_date, end_date, orders_file, start_val=1000000):
     """Driver function."""
 
@@ -137,6 +145,8 @@ def test_run(start_date, end_date, orders_file, start_val=1000000):
     prices_SPX = prices_SPX[['$SPX']]  # remove SPY
     portvals_SPX = get_portfolio_value(prices_SPX, [1.0])
     cum_ret_SPX, avg_daily_ret_SPX, std_daily_ret_SPX, sharpe_ratio_SPX = get_portfolio_stats(portvals_SPX)
+
+    plot_comparision(portvals, prices_SPX)
 
     # Compare portfolio against $SPX
     print "Data Range: {} to {}".format(start_date, end_date)
@@ -294,6 +304,14 @@ def test_orders2():
     end_date = '2011-12-14'
     orders_file = 'orders/orders2.csv'
     start_val = 1000000
+    test_run(start_date, end_date, orders_file, start_val)
+
+
+def test_bollinger():
+    start_date = '2007-12-31'
+    end_date = '2009-12-31'
+    orders_file = 'bollinger-orders.csv'
+    start_val = 10000
     test_run(start_date, end_date, orders_file, start_val)
 
 
