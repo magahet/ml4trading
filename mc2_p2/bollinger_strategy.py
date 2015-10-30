@@ -1,107 +1,8 @@
-"""MC1-P1: Analyze a portfolio."""
+"""MC2-P2: Bollinger Strategy."""
 
 import pandas as pd
 import matplotlib.pyplot as plt
-import numpy as np
-
-from util import get_data, plot_data
-
-
-def get_portfolio_value(prices, allocs, start_val=1):
-    """Compute daily portfolio value given stock prices, allocations and starting value.
-
-    Parameters
-    ----------
-        prices: daily prices for each stock in portfolio
-        allocs: initial allocations, as fractions that sum to 1
-        start_val: total starting value invested in portfolio (default: 1)
-
-    Returns
-    -------
-        port_val: daily portfolio value
-    """
-    # TODO: Your code here
-    #daily_returns = (prices / prices.shift(1)) - 1
-    #daily_returns.ix[0, :] = 0
-    normed = prices / prices.ix[0]
-    alloced = normed * allocs
-    pos_vals = alloced * start_val
-    port_val = pos_vals.sum(axis=1)
-
-    return port_val
-
-
-def get_portfolio_stats(port_val, daily_rf=0, samples_per_year=252):
-    """Calculate statistics on given portfolio values.
-
-    Parameters
-    ----------
-        port_val: daily portfolio value
-        daily_rf: daily risk-free rate of return (default: 0%)
-        samples_per_year: frequency of sampling (default: 252 trading days)
-
-    Returns
-    -------
-        cum_ret: cumulative return
-        avg_daily_ret: average of daily returns
-        std_daily_ret: standard deviation of daily returns
-        sharpe_ratio: annualized Sharpe ratio
-    """
-    # TODO: Your code here
-    cum_ret = (port_val[-1] / port_val[0]) - 1
-
-    daily_ret = (port_val / port_val.shift(1)) - 1
-    daily_ret = daily_ret[1:]
-
-    avg_daily_ret = daily_ret.mean(axis=0)
-    std_daily_ret = daily_ret.std(axis=0)
-    sharpe_ratio = np.sqrt(samples_per_year) * (avg_daily_ret - daily_rf) / std_daily_ret
-    return cum_ret, avg_daily_ret, std_daily_ret, sharpe_ratio
-
-
-def plot_normalized_data(df, title="Normalized prices", xlabel="Date", ylabel="Normalized price"):
-    """Normalize given stock prices and plot for comparison.
-
-    Parameters
-    ----------
-        df: DataFrame containing stock prices to plot (non-normalized)
-        title: plot title
-        xlabel: X-axis label
-        ylabel: Y-axis label
-    """
-    #TODO: Your code here
-    df = df / df.ix[0, :]
-    plot_data(df, title=title, xlabel=xlabel, ylabel=ylabel)
-
-
-def assess_portfolio(start_date, end_date, symbols, allocs, start_val=1):
-    """Simulate and assess the performance of a stock portfolio."""
-    # Read in adjusted closing prices for given symbols, date range
-    dates = pd.date_range(start_date, end_date)
-    prices_all = get_data(symbols, dates)  # automatically adds SPY
-    prices = prices_all[symbols]  # only portfolio symbols
-    prices_SPY = prices_all['SPY']  # only SPY, for comparison later
-
-    # Get daily portfolio value
-    port_val = get_portfolio_value(prices, allocs, start_val)
-    #plot_data(port_val, title="Daily Portfolio Value")
-
-    # Get portfolio statistics (note: std_daily_ret = volatility)
-    cum_ret, avg_daily_ret, std_daily_ret, sharpe_ratio = get_portfolio_stats(port_val)
-
-    # Print statistics
-    print "Start Date:", start_date
-    print "End Date:", end_date
-    print "Symbols:", symbols
-    print "Allocations:", allocs
-    print "Sharpe Ratio:", sharpe_ratio
-    print "Volatility (stdev of daily returns):", std_daily_ret
-    print "Average Daily Return:", avg_daily_ret
-    print "Cumulative Return:", cum_ret
-
-    # Compare daily portfolio value with SPY using a normalized plot
-    df_temp = pd.concat([port_val, prices_SPY], keys=['Portfolio', 'SPY'], axis=1)
-    plot_normalized_data(df_temp, title="Daily portfolio value and SPY")
+from util import get_data
 
 
 class BollingerTradingEngine(object):
@@ -210,7 +111,7 @@ class BollingerTradingEngine(object):
     def stats(self):
         return self.sma, self.std, self.history.size, self.current_position
 
-    def plot(self, title="Stock prices", xlabel="Date", ylabel="Price"):
+    def plot(self, title='', xlabel="Date", ylabel="Price"):
         """Plot stock prices with a custom title and meaningful axis labels."""
         rolling_sma = pd.rolling_mean(self.history, self.window)
         rolling_std = pd.rolling_std(self.history, self.window)
@@ -220,10 +121,10 @@ class BollingerTradingEngine(object):
         fig.set_size_inches(8, 6, forward=True)
         ax.set_xlabel("Date")
         ax.set_ylabel("Price")
-        ax.plot(self.history.index, self.history, "b-", label='price')
-        ax.plot(self.history.index, rolling_sma, "y-", label='mean')
-        ax.plot(self.history.index, upper_band, "c-", label='Upper band')
-        ax.plot(self.history.index, lower_band, "c-", label='Upper band')
+        ax.plot(self.history.index, self.history, "b-", label=self.symbol)
+        ax.plot(self.history.index, rolling_sma, "y-", label='SMA')
+        ax.plot(self.history.index, upper_band, "c-", label='Bollinger Bands')
+        ax.plot(self.history.index, lower_band, "c-", label='')
         colors = {
             100: 'g',
             -100: 'r',
@@ -235,7 +136,7 @@ class BollingerTradingEngine(object):
             position += delta
             color = colors.get(position, 'b')
             ax.axvline(x=date, color=color)
-        ax.legend()
+        ax.legend(loc=3)
         plt.show()
 
     def create_order_book(self, path):
