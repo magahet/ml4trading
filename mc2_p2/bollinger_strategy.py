@@ -3,7 +3,7 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
-from collections import OrderedDict
+#from collections import OrderedDict
 
 from util import get_data, plot_data
 
@@ -108,32 +108,76 @@ def assess_portfolio(start_date, end_date, symbols, allocs, start_val=1):
 class BollingerTradingEngine(object):
     '''Trade recommendation engine based on bollinger bands.'''
 
-    def __init__(self, start_value=None, buy_limit=None, sell_limit=None, window=20):
+    def __init__(self, start_value=None, long_limit=None, short_limit=None, window=20):
         self.start_value = start_value
-        self.buy_limit = buy_limit
-        self.sell_limit = sell_limit
+        self.long_limit = long_limit
+        self.short_limit = short_limit
+        self.current_position = 0
         self.window = window
         self.history = pd.Series()
+        self.recommendation_history = pd.Series()
         self.sma = None
         self.std = None
 
-    def add_data_point(price):
-        self.history.append(price)
-        if len(history) >= self.window:
-            self.sma = history.ix[-window:].mean(axis=0)
-            self.std = history.ix[-window:].std(axis=0)
+    def add_data_point(self, date, price):
+        self.history = self.history.append(pd.Series({date: price}))
+        if self.history.size >= self.window:
+            self.sma = self.history.ix[-self.window:].mean(axis=0)
+            self.std = self.history.ix[-self.window:].std(axis=0)
 
-    def recommendation():
-        if len(self.history) < 2 or not self.sma or not self.std:
+    def recommendation(self):
+        if self.history.size < 2 or not self.sma or not self.std:
             return None
         last_price = self.history[-2]
         current_price = self.history[-1]
-        upper_band = self.sma + 2 * self.std
-        lower_band = self.sma - 2 * self.std
-        if last_price < lower_band and current_price > lower_band:
-            return ('BUY', self.buy_limit)
-        elif last_price > upper_band and current_price < upper_band:
-            return ('SELL', self.sell_limit)
+        current_date = self.history[-1].index
+        upper_threshold = self.sma + 2 * self.std
+        lower_threshold = self.sma - 2 * self.std
+        if (last_price < lower_threshold and
+                current_price > lower_threshold and
+                self.current_position < self.long_limit):
+            self.recommendation_history = self.recommendation_history.append(
+                pd.Series({current_date: 'BUY'}))
+            return ('BUY', self.long_limit)
+        elif (last_price > upper_threshold and
+                current_price < upper_threshold and
+                self.current_position > self.short_limit):
+            return ('SELL', abs(self.short_limit))
+        else:
+            return None
+
+    def stats(self):
+        return self.sma, self.std, self.history.size
+
+    def plot(self, title="Stock prices", xlabel="Date", ylabel="Price"):
+        """Plot stock prices with a custom title and meaningful axis labels."""
+        rolling_sma = pd.rolling_mean(self.history, self.window)
+        rolling_std = pd.rolling_std(self.history, self.window)
+        upper_band = rolling_sma + 2 * rolling_std
+        lower_band = rolling_sma - 2 * rolling_std
+        fig, ax = plt.subplots()
+        fig.set_size_inches(8, 6, forward=True)
+        ax.set_xlabel("Date")
+        ax.set_ylabel("Price")
+        ax.plot(self.history.index, self.history, "b-", label='price')
+        ax.plot(self.history.index, rolling_sma, "y-", label='mean')
+        ax.plot(self.history.index, upper_band, "c-", label='Upper band')
+        ax.plot(self.history.index, lower_band, "c-", label='Upper band')
+        colors = {
+            'BUY': 'r',
+            'SELL': 'g',
+            'EXIT': 'b',
+        }
+        last_recommendation = ''
+        for date, recommendation in self.recommendation_history.iteritems():
+            color = colors[recommendation]
+            if recommendation == last_recommendation:
+                continue
+            if last_recommendation
+            ax.axvline(x=date, color=color)
+            last_recommendation = recommendation
+        ax.legend()
+        plt.show()
 
 
 def run_bollinger():
@@ -141,16 +185,17 @@ def run_bollinger():
     # Define input parameters
     start_date = '2007-12-31'
     end_date = '2009-12-31'
+    symbols = ['IBM']
 
     dates = pd.date_range(start_date, end_date)
     prices_all = get_data(symbols, dates)  # automatically adds SPY
     prices_IBM = prices_all['IBM']  # only portfolio symbols
-    prices_SPY = prices_all['SPY']  # only SPY, for comparison later
+    #prices_SPY = prices_all['SPY']  # only SPY, for comparison later
 
-    engine = BollingerTradingEngine(start_value=10000, buy_limit=100, sell_limit=100)
+    engine = BollingerTradingEngine(start_value=10000, long_limit=100, short_limit=-100)
     for date, price in prices_IBM.iteritems():
-        engine.add_data(date, price)
-        print date, price, engine.recommendation()
+        engine.add_data_point(date, price)
+        print date, price, engine.stats(), engine.recommendation()
     engine.plot()
 
 
