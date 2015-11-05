@@ -11,18 +11,36 @@ class Linear1DKalmanModel(object):
 
     def __init__(self):
         '''Set initial matrices.'''
-        self.x = np.mat([[0.], [0.]])  # initial state (value and velocity)
-        self.P = np.mat([[1000., 0.], [0., 1000.]])  # initial uncertainty
-        self.u = np.mat([[0.], [0.]])  # external motion; none
-        self.F = np.mat([[1., 1.], [0, 1.]])  # state transition function
-        self.H = np.mat([[1., 0.]])  # measurement function
-        self.R = np.mat([[1.]])  # measurement uncertainty
-        self.I = np.mat(np.identity(2))  # 2d identity matrix
+        self.x = np.mat(
+            [[0.], [0.], [0.], [0.]])  # initial state (value and velocity)
+        self.P = np.mat([
+            [1000., 0., 0., 0.],
+            [0., 1000., 0., 0.],
+            [0., 0., 1000., 0.],
+            [0., 0., 0., 1000.]
+        ])  # initial uncertainty
+        self.Q = np.mat([
+            [0., 0., 0., 0.],
+            [0., 0., 0., 0.],
+            [0., 0., 0., 0.],
+            [0., 0., 0., 100.]
+        ])  # initial uncertainty
+        self.R = np.mat([[100.]])  # measurement uncertainty
+        self.u = np.mat([[0.], [0.], [0.], [0.]])  # external motion; none
+        dt = 1.
+        self.F = np.mat([
+            [1., dt, (dt ** 2) / 2, (dt ** 3) / 6],
+            [0., 1, dt, (dt ** 2) / 2],
+            [0., 0., 1., dt],
+            [0, 0, 0, 1.]
+        ])  # state transition function
+        self.H = np.mat([[1., 0., 0., 0.]])  # measurement function
+        self.I = np.mat(np.eye(4))  # 2d identity matrix
         self.current_value = self.x[0, 0]
-        self.current_uncertainty = self.P[0, 0]
+        self.current_std = np.sqrt(self.P[0, 0])
         self.current_momentum = self.x[1, 0]
         self.predicted_value = self.x[0, 0]
-        self.predicted_uncertainty = self.P[0, 0]
+        self.predicted_std = np.sqrt(self.P[0, 0])
         self.predicted_momentum = self.x[1, 0]
 
     def add_measurement(self, data_point):
@@ -30,18 +48,18 @@ class Linear1DKalmanModel(object):
         # measurement update
         z = np.mat([[data_point]])
         y = z - (self.H * self.x)
-        S = self.H * self.P * self.H.transpose() + self.R
-        K = self.P * self.H.transpose() * S.inverse()
+        S = self.H * self.P * self.H.T + self.R
+        K = self.P * self.H.T * S.I
         self.x = self.x + (K * y)
         self.P = (self.I - (K * self.H)) * self.P
         self.current_value = self.x[0, 0]
-        self.current_uncertainty = self.P[0, 0]
+        self.current_std = np.sqrt(self.P[0, 0])
         self.current_mommentum = self.x[1, 0]
         # prediction
         self.x = (self.F * self.x) + self.u
-        self.P = self.F * self.P * self.F.transpose()
+        self.P = self.F * self.P * self.F.T + self.Q
         self.predicted_value = self.x[0, 0]
-        self.predicted_uncertainty = self.P[0, 0]
+        self.predicted_std = np.sqrt(self.P[0, 0])
         self.predicted_mommentum = self.x[1, 0]
 
 
@@ -54,28 +72,34 @@ class KalmanTradingEngine(object):
         self.long_limit = long_limit
         self.short_limit = short_limit
         self.current_position = 0
+        self.history = pd.Series()
+        self.smoothed = pd.Series()
+        self.std = pd.Series()
         self.recommendation_history = pd.DataFrame(
             columns=['Symbol', 'Order', 'Shares'])
 
     def add_data_point(self, date, price):
+        self.history = self.history.append(pd.Series({date: price}))
         self.model.add_measurement(price)
+        self.smoothed = self.smoothed.append(
+            pd.Series({date: self.model.current_value}))
+        self.std = self.std.append(
+            pd.Series({date: self.model.current_std}))
 
-    def get_recommendation(self):
+    def get_recommendation(self, velocity_threshold=0):
         '''Recommend whether to buy, sell, or hold.'''
 
-        def is_long_entry():
-            return (
-                last_price <= self.last_sma - 2 * self.last_std and
-                current_price > self.sma - 2 * self.std
-            )
+        def is_rising():
+            return self.model.current_mommentum > velocity_threshold
 
         def can_buy():
             return self.current_position < self.long_limit
 
         def buy():
-            self.current_position += self.long_limit
+            amount = self.long_limit - self.current_position
+            self.current_position = self.long_limit
             recommendation = pd.DataFrame(
-                [[self.symbol, 'BUY', self.long_limit]],
+                [[self.symbol, 'BUY', amount]],
                 columns=['Symbol', 'Order', 'Shares'],
                 index=[current_date]
             )
@@ -83,19 +107,17 @@ class KalmanTradingEngine(object):
                 recommendation)
             return recommendation
 
-        def is_short_entry():
-            return (
-                last_price >= self.last_sma + 2 * self.last_std and
-                current_price < self.sma + 2 * self.std
-            )
+        def is_falling():
+            return self.model.current_mommentum < -velocity_threshold
 
         def can_sell():
             return self.current_position > self.short_limit
 
         def sell():
-            self.current_position += self.short_limit
+            amount = self.current_position - self.short_limit
+            self.current_position = self.short_limit
             recommendation = pd.DataFrame(
-                [[self.symbol, 'SELL', abs(self.short_limit)]],
+                [[self.symbol, 'SELL', amount]],
                 columns=['Symbol', 'Order', 'Shares'],
                 index=[current_date]
             )
@@ -103,66 +125,39 @@ class KalmanTradingEngine(object):
                 recommendation)
             return recommendation
 
-        def not_enough_data():
-            return (
-                self.history.size < 2 or
-                not all([self.sma, self.std, self.last_sma, self.last_std])
-            )
-
-        def moved_above_sma():
-            return last_price <= self.last_sma and current_price > self.sma
-
-        def moved_below_sma():
-            return last_price >= self.last_sma and current_price < self.sma
-
-        def can_exit_long():
-            return self.current_position >= self.long_limit
-
-        def can_exit_short():
-            return self.current_position <= self.short_limit
-
-        if not_enough_data():
-            return None
         current_date = self.history.index[-1]
-        last_price = self.history[-2]
-        current_price = self.history[-1]
-        if is_long_entry() and can_buy():
+        if is_rising() and can_buy():
             return buy()
-        elif is_short_entry() and can_sell():
+        if is_falling() and can_sell():
             return sell()
-        elif moved_above_sma() and can_exit_long():
-            return sell()
-        elif moved_below_sma() and can_exit_short():
-            return buy()
+        #if is_long_entry() and can_buy():
+            #return buy()
+        #elif is_short_entry() and can_sell():
+            #return sell()
+        #elif moved_above_sma() and can_exit_long():
+            #return sell()
+        #elif moved_below_sma() and can_exit_short():
+            #return buy()
         return None
 
     def stats(self):
-        return self.sma, self.std, self.history.size, self.current_position
+        return self.model.current_value, self.model.current.std
 
     def plot(self, title='', xlabel="Date", ylabel="Price"):
         """Plot stock prices with a custom title and meaningful axis labels."""
-        rolling_sma = pd.rolling_mean(self.history, self.window)
-        rolling_std = pd.rolling_std(self.history, self.window)
-        upper_band = rolling_sma + 2 * rolling_std
-        lower_band = rolling_sma - 2 * rolling_std
+        upper_band = self.smoothed + 2 * self.std
+        lower_band = self.smoothed - 2 * self.std
         fig, ax = plt.subplots()
-        fig.set_size_inches(8, 6, forward=True)
         ax.set_xlabel("Date")
         ax.set_ylabel("Price")
         ax.plot(self.history.index, self.history, "b-", label=self.symbol)
-        ax.plot(self.history.index, rolling_sma, "y-", label='SMA')
-        ax.plot(self.history.index, upper_band, "c-", label='Kalman Bands')
+        ax.plot(
+            self.history.index, self.smoothed, "y-", label='Kalman Filtered')
+        ax.plot(self.history.index, upper_band, "c-",
+                label='Kalman Bollinger Bands')
         ax.plot(self.history.index, lower_band, "c-", label='')
-        colors = {
-            100: 'g',
-            -100: 'r',
-            0: 'k',
-        }
-        position = 0
         for date, recommendation in self.recommendation_history.iterrows():
-            delta = 100 if recommendation.ix['Order'] == 'BUY' else -100
-            position += delta
-            color = colors.get(position, 'b')
+            color = 'g' if recommendation.ix['Order'] == 'BUY' else 'r'
             ax.axvline(x=date, color=color)
         ax.legend(loc=3)
         plt.show()
