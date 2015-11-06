@@ -34,6 +34,9 @@ class EMA(object):
     def __repr__(self):
         return self.ema
 
+    def __str__(self):
+        return str(self.ema)
+
 
 class ROC(object):
 
@@ -50,6 +53,9 @@ class ROC(object):
     def __repr__(self):
         return self.value
 
+    def __str__(self):
+        return str(self.value)
+
 
 class BollingerTradingEngine(object):
     '''Trade recommendation engine based on bollinger bands.'''
@@ -60,7 +66,8 @@ class BollingerTradingEngine(object):
         self.long_limit = long_limit
         self.short_limit = short_limit
         self.current_position = 0
-        self.history = pd.DataFrame()
+        self.history = pd.DataFrame(
+            columns=[self.symbol, 'TRIX', 'EMA(9)'])
         self.ema_list = [EMA(15), EMA(15), EMA(15)]
         self.trix = ROC(1)
         self.signal = EMA(9)
@@ -73,12 +80,14 @@ class BollingerTradingEngine(object):
             value = self.ema_list[index].update(value)
         self.trix.update(value)
         self.signal.update(price)
-        self.history = self.history.append(pd.DataFrame(
-            [[price, self.trix, self.signal]],
+        trix = self.trix if self.trix is not None else np.nan
+        signal = self.signal if self.signal is not None else np.nan
+        df = pd.DataFrame(
+            [[price, trix, signal]],
             columns=[self.symbol, 'TRIX', 'EMA(9)'],
             index=[date]
-        ))
-        print self.history
+        )
+        self.history = self.history.append(df)
 
     def get_recommendation(self):
         '''Recommend whether to buy, sell, or hold.'''
@@ -130,22 +139,22 @@ class BollingerTradingEngine(object):
     def plot(self, title='', xlabel="Date", ylabel="Price"):
         """Plot stock prices with a custom title and meaningful axis labels."""
         print self.history
-        #ax = self.history.plot()
-        #ax.set_xlabel("Date")
-        #ax.set_ylabel("Price")
-        #colors = {
-            #100: 'g',
-            #-100: 'r',
-            #0: 'k',
-        #}
-        #position = 0
-        #for date, recommendation in self.recommendation_history.iterrows():
-            #delta = 100 if recommendation.ix['Order'] == 'BUY' else -100
-            #position += delta
-            #color = colors.get(position, 'b')
-            #ax.axvline(x=date, color=color)
-        #ax.legend(loc=3)
-        #plt.show()
+        ax = self.history.plot()
+        ax.set_xlabel("Date")
+        ax.set_ylabel("Price")
+        colors = {
+            100: 'g',
+            -100: 'r',
+            0: 'k',
+        }
+        position = 0
+        for date, recommendation in self.recommendation_history.iterrows():
+            delta = 100 if recommendation.ix['Order'] == 'BUY' else -100
+            position += delta
+            color = colors.get(position, 'b')
+            ax.axvline(x=date, color=color)
+        ax.legend(loc=3)
+        plt.show()
 
     def create_order_book(self, path):
         self.recommendation_history.to_csv(
