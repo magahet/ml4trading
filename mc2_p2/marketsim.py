@@ -315,13 +315,14 @@ def test_bollinger():
     test_run(start_date, end_date, orders_file, start_val)
 
 
-def test_kalman():
+def test(name):
     start_date = '2007-12-31'
     end_date = '2009-12-31'
-    orders_file = 'kalman-orders.csv'
+    orders_file = '{}-orders.csv'.format(name)
     start_val = 10000
     test_run(start_date, end_date, orders_file, start_val)
 
 
 if __name__ == "__main__":
-    locals()['test_' + sys.argv[1]]()
+    #locals()['test_' + sys.argv[1]]()
+    test(sys.argv[1])
