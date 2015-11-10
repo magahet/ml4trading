@@ -1,12 +1,16 @@
-# MC2-Project-2 - Technical Indicators
+---
+title: MC2-Project-2 - Technical Indicators
+author: Magahet Mendiola
+date: November, 2015
+---
 
 ## Overview
 
-We will consider the use of technical indicators to signal asset trades. The underlaying assumption is that asset price history can be used to predict future pricing trends.
+We will consider the use of technical indicators to signal trade orders. The underlaying assumption is that asset price history can be used to predict future pricing trends.
 
 ## Bollinger Bands
 
-As specified in the assignment, the Bollinger Strategy has been coded to trigger a buy order when the price moves from below to above the lower band, and a sell order when the price moves from above to below the upper band. Long and short positions are exited when the price crosses the SMA line after entering a buy or sell position.
+As specified in the assignment, the Bollinger Strategy was coded to trigger a buy order when the price moves from below to above the lower band, and a sell order when the price moves from above to below the upper band. Long and short positions are exited when the price crosses the SMA line after entering a buy or sell position.
 
 
 #### Bollinger Band entry/exit graph
@@ -31,6 +35,7 @@ The following snippet from the bollinger_strategy.py shows the core logic behind
 ```
 
 Each boolean function performs the calculations as defined in the strategy specification.
+
 ```python
     def is_long_entry():
         return (
@@ -82,16 +87,16 @@ The market simulator results show the Bollinger Strategy resulted in a high shar
 
 ### Strategy
 
-The basis of this strategy is simply to reduce the daily noise in the asset's pricing and find an long-term trend. My first attempt was to utilize complex smoothing and forecasting methods, such as Kalman and particle filter movement modeling and prediction. These techniques produced mixed results and the added complexity of the models cast doubt on their efficacy. In every case, they were able to provide only slight improvement on cumulative return, and never an improvement on risk adjusted return.
+The basis of this strategy is simply to reduce the daily noise in the asset's pricing and find a long-term trend. My first attempt was to utilize complex smoothing and forecasting methods, such as Kalman and particle filter movement modeling and prediction. These techniques produced mixed results and the added complexity of the models cast doubt on their efficacy. In every case, they were able to provide only a slight improvement on cumulative return, and never an improvement on risk adjusted return.
 
-The next evolution was to try an established momentum indicator, for which I choose TRIX. This is the rate-of-change for a triple smoothed exponential moving average of our asset's daily price. Following the published methodology, I calculated the triple wrapped, 15 day, EMA and took the one day ROC of that value. This resulted in a smooth trend-line, with a fairly straight forward model for the smoothing. Unfortunately, the trend-line lagged noticeably behind the major movements in the asset's pricing, causing this strategy to loose out on opportunities to ride those trends. Performance with this strategy barely out performed the SPY.
+The next evolution was to try an established momentum indicator, for which I choose TRIX. This is the rate-of-change for a triple smoothed exponential moving average of our asset's daily price. Following the published methodology, I calculated the triple wrapped, 15 day, EMA and took the one day ROC of that value. This resulted in a smooth trend-line, with a fairly straightforward model for the smoothing. Unfortunately, the trend-line lagged noticeably behind the major movements in the asset's pricing, causing this strategy to loose out on opportunities to ride those trends. Performance with this strategy barely out performed the SPY.
 
 The final form of the momentum indicator is as simple as it gets, but provided surprising results. I take the 15 day simple moving average of the asset's price and compute its one period ROC. This produces a chart of daily movement in the price's SMA. This resulted in a reasonably smooth trend line, along with a technical indicator with which to signal trades.
 
 
 #### Momentum strategy description
 
-The momentum trading strategy is simply to take ROC(1) on SMA(15) and trade long or short based on the direction of change. The recommendation engine includes an adjustable buffer value to prevent over-eager trading on minor movements. The initial value of this buffer was 0.1, which indicates that the one period ROC would have to be above 10% to trigger a buy and under 10% to trigger a sell. This reasonably good results, including out-performing the Bollinger Band strategy (cumulative return of ~0.6).
+The momentum trading strategy is simply to take ROC(1) on SMA(15) and trade long or short based on the direction of change. The recommendation engine includes an adjustable buffer value to prevent over-eager trading on minor movements. The initial value of this buffer was 0.1, which indicates that the one period ROC would have to be above 10% to trigger a buy and under 10% to trigger a sell. This produced reasonably good results, including out-performing the Bollinger Band strategy (cumulative return of ~0.6).
 
 The intuition behind the buffer value is that we can adjust the strategy to filter out minor price movements, while attempting to ride larger trends. However, this only works if you can accurately determine how much movement should be filtered out. A buffer set too high would miss most trends, while setting it too low would cause our recommendation engine to wildly chase momentary fluctuations. 
 
@@ -100,7 +105,7 @@ In an attempt to tune this parameter a bit, I used scipy's simulated annealing f
 
 #### Momentum strategy code
 
-The final momentum strategy code is minimal. The majority of logic can be shown in the following example:
+The final momentum strategy code is minimal. The majority of data processing can be shown in the following example:
 
 ```python
     dates = pd.date_range(start_date, end_date)
@@ -127,7 +132,7 @@ Generating trades from the ROC series is equally minimal:
 
 #### Momentum strategy graph
 
-Using a signal buffer value of 0.005 results in only five trades during the period. These happen at major inflection points, with the exception of one minor movement captured in March, '09. This illustrates the limitation of the strategy as it's not immune to picking up false trending indicators. However, at least over this period, the large overall trends were captured with the ROC on SMA indicator, as can be seen in Figure 3.
+Using a signal buffer value of 0.005 results in only five trades during the period. These happen at major inflection points, with the exception of one minor movement captured in March, '09. This illustrates the limitation of the strategy as it's not immune to picking up false trending indicators. However, at least over this period, the large overall trends were captured with the ROC on SMA indicator, as can be seen in Figure 3. It's also worth mentioning that if we consider the transaction cost of placing orders, a strategy with so few trades would be advantageous.
 
 ![Momentum Strategy](output/ms.png "Momentum Strategy")
 
