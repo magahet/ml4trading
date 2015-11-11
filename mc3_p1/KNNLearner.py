@@ -3,14 +3,13 @@ A simple wrapper for linear regression.  (c) 2015 Tucker Balch
 """
 
 import numpy as np
-import scipy
-import heapq
+import scipy.spatial
 
 
-class LinRegLearner(object):
+class KNNLearner(object):
 
-    def __init__(self):
-        pass  # move along, these aren't the drones you're looking for
+    def __init__(self, k=1):
+        self.k = k
 
     def addEvidence(self, dataX, dataY):
         """
@@ -18,12 +17,8 @@ class LinRegLearner(object):
         @param dataX: X values of data to add
         @param dataY: the Y training values
         """
-        # slap on 1s column so linear regression finds a constant term
-        newdataX = np.ones([dataX.shape[0], dataX.shape[1] + 1])
-        newdataX[:, 0:dataX.shape[1]] = dataX
-
-        # build and save the model
-        self.model_coefs, residuals, rank, s = np.linalg.lstsq(newdataX, dataY)
+        self.spatial_db = BruteSpatial(dataX)
+        self.dataY = dataY
 
     def query(self, points):
         """
@@ -31,25 +26,33 @@ class LinRegLearner(object):
         @param points: should be a numpy array with each row corresponding to a specific query.
         @returns the estimated values according to the saved model.
         """
-        return (self.model_coefs[:-1] * points).sum(axis=1) + self.model_coefs[-1]
+        estimates = []
+        for point in points:
+            indices = self.spatial_db.search(point, k=self.k, indecies=True)
+            estimates.append(self.dataY[indices].mean())
+        return np.array(estimates)
 
 
 class BruteSpatial(object):
-    '''Implements a naive spacial data structure.'''
+    '''Implements a naive spatial data structure.'''
 
     def __init__(self, points):
         self.points = points
 
-    def search(self, query_point, k=1):
+    def search(self, point, k=1, indecies=False):
         '''Perform brute force knn search.'''
-        neighbors = []
-        for point in self.points:
-            inv_dist = -scipy.spatial.distance.euclidean(query_point, point)
-            if len(neighbors) < k:
-                heapq.heappush(neighbors, (inv_dist, point))
+        if k >= self.points.shape[0]:
+            if indecies:
+                return np.arange(self.points.shape[0])
             else:
-                heapq.heappushpop(neighbors, (inv_dist, point))
-        return [t[1] for t in neighbors]
+                return self.points
+        dist = scipy.spatial.distance.cdist(
+            np.array([point]), self.points)
+        smallest_k_indices = dist.argsort()[0][:k]
+        if indecies:
+            return smallest_k_indices
+        else:
+            return self.points[smallest_k_indices]
 
 
 if __name__ == "__main__":

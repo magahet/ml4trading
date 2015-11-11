@@ -1,10 +1,11 @@
+#!/usr/bin/env python
 """
 Test a learner.  (c) 2015 Tucker Balch
 """
 
 import numpy as np
 import math
-import LinRegLearner as lrl
+import KNNLearner as knnl
 
 if __name__=="__main__":
     inf = open('Data/ripple.csv')
@@ -21,7 +22,7 @@ if __name__=="__main__":
     testY = data[train_rows:,-1]
 
     # create a learner and train it
-    learner = lrl.LinRegLearner() # create a LinRegLearner
+    learner = knnl.KNNLearner(k=3)
     learner.addEvidence(trainX, trainY) # train it
 
     # evaluate in sample
