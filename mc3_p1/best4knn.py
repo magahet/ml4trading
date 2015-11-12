@@ -11,4 +11,4 @@ if __name__ == '__main__':
     x_list = range(1000)
     random.shuffle(x_list)
     for x in x_list:
-        print '{},{}'.format(x, add_noise(x % 10))
+        print '{},{}'.format(x, add_noise(x % 200))
