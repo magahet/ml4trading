@@ -30,29 +30,26 @@ if __name__ == '__main__':
         testY = data[train_rows:, -1]
 
     # create a learner and train it
-    rmse_train = []
-    rmse_test = []
-    cc_train = []
-    cc_test = []
-    for k in xrange(100, 1, -1):
+    rmse_train_list = []
+    rmse_test_list = []
+    k_list = range(10, 0, -1)
+    for k in k_list:
         learner = knn.KNNLearner(k=k)
         learner.addEvidence(trainX, trainY)  # train it
-
-        # train set
         predY = learner.query(trainX)  # get the predictions
-        rmse_train.append(math.sqrt(((trainY - predY) ** 2).sum() / trainY.shape[0]))
-        #c = np.corrcoef(predY, y=trainY)
-        #cc_train.append(c[0, 1])
-
-        # test set
+        rmse_train = math.sqrt(((trainY - predY) ** 2).sum() / trainY.shape[0])
+        rmse_train_list.append(rmse_train)
         predY = learner.query(testX)  # get the predictions
-        rmse_test.append(math.sqrt(((testY - predY) ** 2).sum() / testY.shape[0]))
-        #c = np.corrcoef(predY, y=testY)
-        #cc_test.append(c[0, 1])
+        rmse_test = math.sqrt(((testY - predY) ** 2).sum() / testY.shape[0])
+        rmse_test_list.append(rmse_test)
+        print k, rmse_train, rmse_test
 
-    rmse = pd.DataFrame({'Train': rmse_train, 'Test': rmse_test})
+    rmse = pd.DataFrame({'Train': rmse_train_list, 'Test': rmse_test_list},
+                        index=k_list)
     #cc = pd.DataFrame({'Train': cc_train, 'Test': cc_test})
     rmse.plot()
     plt.tight_layout()
     plt.gca().invert_xaxis()
+    plt.xlabel('k')
+    plt.ylabel('rmse')
     plt.show()

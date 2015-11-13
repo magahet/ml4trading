@@ -76,6 +76,21 @@ Create your own dataset generating code (call it best4KNN.py) that creates data 
 Explain your data generating algorithm, and explain why KNNLearner performs better.
 Your data should include at least 2 dimensions in X, and at least 1000 points. (Don't use bagging for this section).
 
+The following is a simple algorithm for generating a dataset that performs better with knn than linear regression:
+
+```python
+
+    for x in x_list:
+        print '{},{},{}'.format(x, x, add_noise(x % 200))
+```
+
+It generates a non-linear repeating pattern that can be seen in Figure X. 
+
+![KNN Suited Data](output/best4knn.png)
+
+You can see that KNN is able to adapt to the steps from high Y values to low. Some queries will have issues when the nearest neighbor includes both high and low points. However, compared to the overall performance of linear regression, this accounts for a minor increase in error. The following shows the error results for each learner:
+
+
 #### KNN results
 
     In sample results
@@ -104,6 +119,11 @@ Your data should include at least 2 dimensions in X, and at least 1000 points. (
 
 Consider the dataset ripple with KNN. For which values of K does overfitting occur? (Don't use bagging).
 
+Figure X shows that overfitting begins to occur at K = 2. Before this point, error on the test dataset decreases with smaller values of K. At K = 2, the error on testing data increases while it continues to decrease for the training set.
+
+
+![Test and Train error for various K](output/overfitting-k.png)
+
 
 ### Effect of Bag Count on Performance
 
@@ -111,12 +131,26 @@ Now use bagging in conjunction with KNN with the ripple dataset.
 
 How does performance vary as you increase the number of bags?
 
+Runtime performance of the bagging learner increases linearly with the number of bags. We see this in Figure X. This result is expected, as each KNN learner requires an equal amount of time to train and query.
+
+![Runtime Performance for Various # of Bags](output/bagging-perf.png)
+
 
 ### Effect of Bag Count on Overfitting
 
 Does overfitting occur with respect to the number of bags?
 
+The number of bags does not not seem to contribute to overfitting. Figure X shows that error decreases identically for both the training and testing datasets as the number of bags increase. We also see that error does not drop significantly after a reaching 20-30 bags.
+
+![Test and Train Error for Various # of Bags](output/overfitting-bags.png)
+
 
 ### Effect of Bagging with respect to K
 
 Can bagging reduce or eliminate overfitting with respect to K for the ripple dataset?
+
+Figure X shows the error for various number of bags with a KNN learner set with K = 1. As we observed earlier, that value of K causes the worst overfitting. Training error will be zero, and testing error will be higher due to the loss of generalization. Bagging averages various learners' results, thus adding generalization. The effect is that bagging does, indeed, reduce overfitting.
+
+![Test and Train Error for Various # of Bags with K = 1](output/overfitting-bags-k.png)
+
+

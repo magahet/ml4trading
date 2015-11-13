@@ -9,7 +9,9 @@ def add_noise(x):
 
 if __name__ == '__main__':
     data = []
-    for x in xrange(1000):
+    for x in xrange(334):
+        data.append('{},{}'.format(x, add_noise(1000 * x)))
+        data.append('{},{}'.format(x, add_noise(1000 * x)))
         data.append('{},{}'.format(x, add_noise(1000 * x)))
     random.shuffle(data)
     for sample in data:

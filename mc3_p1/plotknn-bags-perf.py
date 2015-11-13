@@ -5,6 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import sys
 import math
+import time
 #import LinRegLearner as lrl
 import KNNLearner as knn
 import BagLearner as bl
@@ -30,26 +31,24 @@ if __name__ == '__main__':
         testY = data[train_rows:, -1]
 
     # create a learner and train it
-    rmse_train_list = []
-    rmse_test_list = []
-    b_list = range(100, 0, -10)
+    times = []
+    b_list = range(10, 101, 10)
     for b in b_list:
+        start = time.time()
         learner = bl.BagLearner(learner=knn.KNNLearner, bags=b)
         learner.addEvidence(trainX, trainY)  # train it
         predY = learner.query(trainX)  # get the predictions
-        rmse_train = math.sqrt(((trainY - predY) ** 2).sum() / trainY.shape[0])
-        rmse_train_list.append(rmse_train)
         predY = learner.query(testX)  # get the predictions
-        rmse_test = math.sqrt(((testY - predY) ** 2).sum() / testY.shape[0])
-        rmse_test_list.append(rmse_test)
-        print b, rmse_train, rmse_test
+        elapsed = time.time() - start
+        times.append(elapsed)
+        print b, elapsed
 
-    rmse = pd.DataFrame({'Train': rmse_train_list, 'Test': rmse_test_list},
+    rmse = pd.DataFrame({'Run Time': times},
                         index=b_list)
     #cc = pd.DataFrame({'Train': cc_train, 'Test': cc_test})
     rmse.plot()
     plt.tight_layout()
-    plt.gca().invert_xaxis()
+    #plt.gca().invert_xaxis()
     plt.xlabel('bags')
-    plt.ylabel('rmse')
+    plt.ylabel('time (sec)')
     plt.show()

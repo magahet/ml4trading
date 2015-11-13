@@ -32,9 +32,9 @@ if __name__ == '__main__':
     # create a learner and train it
     rmse_train_list = []
     rmse_test_list = []
-    b_list = range(100, 0, -10)
+    b_list = range(1, 20)
     for b in b_list:
-        learner = bl.BagLearner(learner=knn.KNNLearner, bags=b)
+        learner = bl.BagLearner(learner=knn.KNNLearner, bags=b, kwargs={'k': 1})
         learner.addEvidence(trainX, trainY)  # train it
         predY = learner.query(trainX)  # get the predictions
         rmse_train = math.sqrt(((trainY - predY) ** 2).sum() / trainY.shape[0])
@@ -49,7 +49,7 @@ if __name__ == '__main__':
     #cc = pd.DataFrame({'Train': cc_train, 'Test': cc_test})
     rmse.plot()
     plt.tight_layout()
-    plt.gca().invert_xaxis()
+    #plt.gca().invert_xaxis()
     plt.xlabel('bags')
     plt.ylabel('rmse')
     plt.show()
