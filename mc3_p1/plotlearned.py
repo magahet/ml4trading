@@ -48,8 +48,12 @@ if __name__ == '__main__':
     lrl_y = lrl_l.query(testX)  # get the predictions
     knn_y = knn_l.query(testX)  # get the predictions
 
-    knn_df = pd.DataFrame({'x': testX.flatten(), 'y': knn_y})
-    lrl_df = pd.DataFrame({'x': testX.flatten(), 'y': lrl_y})
+    knn_df = pd.DataFrame({'x': testX[:, 0], 'y': knn_y})
+    lrl_df = pd.DataFrame({'x': testX[:, 0], 'y': lrl_y})
 
-    data = pd.DataFrame({'x': testX.flatten(), 'y': testY.flatten()})
+    data = pd.DataFrame({'x': testX[:, 0], 'y': testY.flatten()})
     plot(data, knn_df, lrl_df)
+
+    cor = pd.DataFrame({'actual': testY.flatten(), 'predicted': knn_y})
+    cor.plot(kind='scatter', x='actual', y='predicted')
+    plt.show()

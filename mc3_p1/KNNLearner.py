@@ -17,7 +17,8 @@ class KNNLearner(object):
         @param dataX: X values of data to add
         @param dataY: the Y training values
         """
-        self.spatial_db = BruteSpatial(dataX)
+        #self.spatial_db = BruteSpatial(dataX)
+        self.spatial_db = KDTree(dataX)
         self.dataY = dataY
 
     def query(self, points):
@@ -31,6 +32,20 @@ class KNNLearner(object):
             indices = self.spatial_db.search(point, k=self.k, indecies=True)
             estimates.append(self.dataY[indices].mean())
         return np.array(estimates)
+
+
+class KDTree(object):
+    '''Implements a kdtree spatial data structure.'''
+
+    def __init__(self, points):
+        self.kdtree = scipy.spatial.KDTree(points)
+
+    def search(self, point, k=1, indecies=False):
+        results = self.kdtree.query(point, k=k)
+        if indecies:
+            return results[1]
+        else:
+            return self.dktree.data[results[1]]
 
 
 class BruteSpatial(object):

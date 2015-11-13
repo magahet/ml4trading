@@ -18,10 +18,10 @@ if __name__ == "__main__":
                         help='learner to test')
     parser.add_argument('-d', '--dataset-path', dest='dataset_path',
                         default='Data/ripple.csv', help='path to dataset file.')
-    parser.add_argument('-k', default=3, help='K to use for KNN.')
+    parser.add_argument('-k', default=3, type=int, help='K to use for KNN.')
     parser.add_argument('-b', '--bagging', default=False, action='store_true',
                         help='use bagging.')
-    parser.add_argument('-n', '--bags', default=20,
+    parser.add_argument('-n', '--bags', type=int, default=20,
                         help='number of bags to use in bagging.')
     parser.add_argument('-a', '--boost', default=False, action='store_true',
                         help='use boosting in bagging.')
