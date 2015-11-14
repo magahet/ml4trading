@@ -60,7 +60,7 @@ class BagLearner(object):
                 instance_estimates = learner.query(self.dataX)
                 weights = self.get_boosting_weights(instance_estimates)
 
-    def get_boosting_wieghts(self, estimates):
+    def get_boosting_weights(self, estimates):
         '''Get percentage histogram of estimate errors.'''
         absolute_error = np.abs(estimates - self.dataY)
         return absolute_error / absolute_error.sum()
