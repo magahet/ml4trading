@@ -38,7 +38,7 @@ Figure 1 illustrates actual 5 day future price, predicted future price, and curr
 
 #### Generated Trades
 
-Figure 2 shows the entry and exits points period 2008-2009. Show long entries as green lines, short entries as red lines and exits as black lines. You may find it convenient to zoom in on a particular time period so this is evident.
+Figure 2 shows the entry and exits points for period 2008-2009. The plot has asset prices on top and the predicted 5 day price change on the bottom. We can see how the trading strategy is entering long positions as this value moves above 0.01. Likewise, short positions are shown in red when the predicted change falls below -0.01. We can see in the top plot that this strategy does capture much of the movement, both up and down, in the asset price. However, it could be tuned further as it currently looses some value in the threshold window 0.01 to -0.01. It would be possible to remove this window completely and trade strictly on movements above and below a change of 0.0. This would likely cause our regression trading strategy to perform more poorly on data without such obvious trends.
 
 
 ![Entries/Exits - ML4T-399 '08-'09](output/m399-orders-09.png)
@@ -46,75 +46,36 @@ Figure 2 shows the entry and exits points period 2008-2009. Show long entries as
 
 #### Trading Strategy Backtest
 
-    Data Range: 2007-12-31 to 2009-12-31
-
-    Sharpe Ratio of Fund: 9.34910227904
-    Sharpe Ratio of $SPX: -0.21996865409
-
-    Cumulative Return of Fund: 7.65646479
-    Cumulative Return of $SPX: -0.240581328829
-
-    Standard Deviation of Fund: 0.00731742096044
-    Standard Deviation of $SPX: 0.0219524869863
-
-    Average Daily Return of Fund: 0.00430950789491
-    Average Daily Return of $SPX: -0.000304189525556
-
-    Final Portfolio Value: 86564.6479
-
 ![Backtest - ML4T-399 '08-'09](output/m399-perf-09.png)
 
-Figure 3 shows the performance of our trading strategy
+Figure 3 shows the performance of our trading strategy for ML4T-399 2008-2009. We see a cumulative return of 7.7 (-0.2 on SPY). The Sharpe ratio of our portfolio is 9.3 (-0.2 on SPY).
 
 
 ### 2010 Time Period
 
 #### Generated Trades
 
-Sine Data Out of Sample Entries/Exits: Freeze your model based on the 2008-2009 data. Now test it for the year 2010 -- Plot that illustrates entry & exits, generate trades,
+The KNN learner was trained on ML4T-399 data during the 2008-2009 time period. Pricing data from 2010 was then loaded and technical indicators calculated on this dataset. Using the 2008-2009 trained learner, queries were made with the 2010 attributes. As before, trades were generated using the +/- 0.01 trading signal.
+
+Figure 4 shows the results of these generated trades. As before, the strategy does well at capturing the movement in asset price. Error on this test set is: RMSE: 0.0018, Corr: 0.99, indicating that our KNN learner performed quite well in predicting price changes with test samples outside the original training data.
 
 ![Entries/Exits - ML4T-399 '10](output/m399-orders-10.png)
 
 
 #### Trading Strategy Backtest
 
-Sine Data Out of Sample Backtest
-
-    Data Range: 2009-12-31 to 2010-12-31
-
-    Sharpe Ratio of Fund: 10.4088491304
-    Sharpe Ratio of $SPX: 0.756512754402
-
-    Cumulative Return of Fund: 3.67897198
-    Cumulative Return of $SPX: 0.127827100708
-
-    Standard Deviation of Fund: 0.00943439017466
-    Standard Deviation of $SPX: 0.0113715303326
-
-    Average Daily Return of Fund: 0.00618609060464
-    Average Daily Return of $SPX: 0.000541919649169
-
-    Final Portfolio Value: 46789.7198
-
+Figure 5 shows the performance results of our 2010 portfolio as created with the KNN based trading strategy. We see a cumulative return of 3.7 (0.1 on SPY) and a Sharpe ratio of 10.4 (0.8 on SPY).
 
 ![Backtest - ML4T-399 '10](output/m399-perf-10.png)
-
-Learning results
-
-    In sample results
-    RMSE:  0.00182176340524
-    corr:  0.999922732335
 
 
 ## ML4T-399 Dataset
 
 ### 2008-2009 Time Period
 
-#### Regression Results
-
 #### Generated Trades
 
-IBM Data In Sample Entries/Exits: Create a plot that illustrates entry and exits as vertical lines on a price chart for the in sample period 2008-2009. Show long entries as green lines, short entries as red lines and exits as black lines. You may find it convenient to zoom in on a particular time period so this is evident.
+Using the same learning and trading strategy on IBM during 2008-2009 shows positive, though not overly impressive, results. Figure 6 shows generated orders, IBM price, and
 
 ![Training Y/Price/Predicted Y - IBM '08-'09](output/ibm-orders-09.png)
 
