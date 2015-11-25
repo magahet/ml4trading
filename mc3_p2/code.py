@@ -10,16 +10,21 @@ from util import get_data
 import argparse
 
 
-def plot(data, knn_df, lnl_df):
-    fig, (ax1, ax2, ax3) = plt.subplots(3, 1, sharex=True)
-    data.plot(kind='scatter', x='x', y='y', ax=ax1)
-    knn_df.plot(kind='scatter', x='x', y='y', ax=ax2)
-    lnl_df.plot(kind='scatter', x='x', y='y', ax=ax3)
-    ax1.set_title('Actual')
-    ax2.set_title('KNN')
-    ax3.set_title('LinReg')
-    plt.tight_layout()
-    plt.show()
+#def plot_orders(pos, prices, predY):
+    #fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True)
+    #prices.plot(ax=ax1)
+    #predY.plot(ax=ax2, label='PredY')
+    #ax1.set_xlabel("Date")
+    #ax1.set_ylabel("Price")
+    #ax2.set_xlabel("Date")
+    #ax2.set_ylabel("% Change")
+    #for date, pos in orders.iterrows():
+        #color = 'g' if order.ix['Order'] == 'BUY' else 'r'
+        #ax1.axvline(x=date, color=color)
+        #ax2.axvline(x=date, color=color)
+    #ax1.legend(loc=3)
+    #ax2.legend(loc=3)
+    #plt.show()
 
 
 def normalize(data, new_max=1, new_min=-1):
@@ -121,12 +126,62 @@ def get_correlation(actual, predicted):
     return c[0, 1]
 
 
-def plot_Y(prices, actualY, predY, indecies):
+def get_future_prices(prices, actualY, predY, indecies):
+    symbol = prices.columns[0]
     df = prices.copy()
     df['Train Y'] = pd.Series(actualY, index=indecies)
     df['Predicted Y'] = pd.Series(predY, index=indecies)
-    df.plot()
+    df['Train Y'] = df[symbol] * (1 + df['Train Y'])
+    df['Predicted Y'] = df[symbol] * (1 + df['Predicted Y'])
+    return df
+
+
+def plot_Y(prices, actualY, predY, indecies, title=''):
+    symbol = prices.columns[0]
+    df = prices.copy()
+    df['Train Y'] = pd.Series(actualY, index=indecies)
+    df['Predicted Y'] = pd.Series(predY, index=indecies)
+    df['Train Y'] = df[symbol] * (1 + df['Train Y'])
+    df['Predicted Y'] = df[symbol] * (1 + df['Predicted Y'])
+    ax = df[:50].plot(title=title)
+    ax.set_xlabel('Date')
+    ax.set_ylabel('Price')
     plt.show()
+    return df
+
+
+def get_positions(predY, indicies, threshold=0.01):
+    pos = pd.Series(predY, index=indicies)
+    pos[pos > threshold] = 1.0
+    pos[pos < -threshold] = -1.0
+    pos[(pos <= threshold) & (pos >= -threshold)] = 0.0
+    return pos
+
+
+def get_trades(pos):
+    trades = pos - pos.shift(1)
+    trades[0] = pos[0]
+    return trades[trades != 0]
+
+
+def generate_orders(symbol, trades, max_pos=100):
+    orders_list = []
+    for date, trade in trades.iteritems():
+        order = 'BUY' if trade > 0 else 'SELL'
+        amount = abs(trade) * max_pos
+        orders_list.append({
+            'Date': date,
+            'Symbol': symbol,
+            'Order': order,
+            'Shares': amount
+        })
+    if orders_list:
+        return pd.DataFrame.from_records(orders_list, index='Date')
+
+
+def create_orders_file(orders, orders_file='orders.csv'):
+    orders.to_csv(orders_file, columns=['Symbol', 'Order', 'Shares'],
+                  index_label='Date')
 
 
 if __name__ == '__main__':
@@ -148,13 +203,12 @@ if __name__ == '__main__':
     print "RMSE: ", rmse
     print "corr: ", corr
 
-    plot_Y(prices, trainY, predY, indecies)
+    #df = plot_Y(prices, trainY, predY, indecies,
+                #'Training Y/Price/Predicted Y - ML4T-399')
+    df = get_future_prices(prices, trainY, predY, indecies)
 
-    # evaluate out of sample
-    #predY = learner.query(testX)  # get the predictions
-    #rmse = math.sqrt(((testY - predY) ** 2).sum() / testY.shape[0])
-    #print
-    #print "Out of sample results"
-    #print "RMSE: ", rmse
-    #c = np.corrcoef(predY, y=testY)
-    #print "corr: ", c[0, 1]
+    #positions = get_positions(predY, indicies)
+    #trades = get_trades(positions)
+    #orders = generate_orders(args.symbol, trades)
+    #create_orders_file(orders, args.orders)
+    #plot_orders(positions, prices, predY)
