@@ -10,21 +10,32 @@ from util import get_data
 import argparse
 
 
-#def plot_orders(pos, prices, predY):
-    #fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True)
-    #prices.plot(ax=ax1)
-    #predY.plot(ax=ax2, label='PredY')
-    #ax1.set_xlabel("Date")
-    #ax1.set_ylabel("Price")
-    #ax2.set_xlabel("Date")
-    #ax2.set_ylabel("% Change")
-    #for date, pos in orders.iterrows():
-        #color = 'g' if order.ix['Order'] == 'BUY' else 'r'
-        #ax1.axvline(x=date, color=color)
-        #ax2.axvline(x=date, color=color)
-    #ax1.legend(loc=3)
-    #ax2.legend(loc=3)
-    #plt.show()
+def plot_orders(orders, prices, predY, indices):
+    fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True)
+    prices.plot(ax=ax1)
+    predYDF = pd.DataFrame()
+    predYDF['Predicted 5-day Price Change'] = pd.Series(predY, index=indices, copy=True)
+    predYDF.plot(ax=ax2)
+    ax1.set_xlabel("Date")
+    ax1.set_ylabel("Price")
+    ax2.set_xlabel("Date")
+    ax2.set_ylabel("Forecast Price Change")
+    colors = {
+        100: 'g',
+        -100: 'r',
+        0: 'k',
+    }
+    position = 0
+    for date, order in orders.iterrows():
+        delta = order.ix['Shares']
+        delta = -delta if order.ix['Order'] == 'SELL' else delta
+        position += delta
+        color = colors.get(position, 'b')
+        ax1.axvline(x=date, color=color)
+        ax2.axvline(x=date, color=color)
+    ax1.legend(loc=3)
+    ax2.legend(loc=3)
+    plt.show()
 
 
 def normalize(data, new_max=1, new_min=-1):
@@ -94,27 +105,29 @@ def parse_args():
                         help='number of bags to use in bagging.')
     parser.add_argument('-o', '--orders', default='orders.csv',
                         help='filename of orders file to create.')
-    parser.add_argument('-s', '--start', default='10000',
-                        help='Start value of portfolio')
+    parser.add_argument('-S', '--start-test', dest='start_test',
+                        help='Start Date of test')
+    parser.add_argument('-E', '--end-test', dest='end_test',
+                        help='End Date of test')
     return parser.parse_args()
 
 
-def get_training_data(start_date, end_date, symbol):
+def get_learning_data(start_date, end_date, symbol):
     dates = pd.date_range(start_date, end_date)
     prices = get_data([symbol], dates)
     prices.drop('SPY', axis=1, inplace=True)
 
-    trainX = pd.DataFrame(index=prices.index)
-    trainX['bb'] = get_bb_value(prices)
-    trainX['momentum'] = get_momentum(prices)
-    trainX['volatility'] = get_volatility(prices)
-    trainX = normalize(trainX)
-    trainY = get_price_change(prices, 5)
+    x_df = pd.DataFrame(index=prices.index)
+    x_df['bb'] = get_bb_value(prices)
+    x_df['momentum'] = get_momentum(prices)
+    x_df['volatility'] = get_volatility(prices)
+    x_df = normalize(x_df)
+    y_values = get_price_change(prices, 5)
 
-    indecies = trainX.ix[19:-5].index
-    trainX = trainX.ix[19:-5].values
-    trainY = trainY.ix[19:-5, 0].values
-    return prices, trainX, trainY, indecies
+    indices = x_df.ix[19:-5].index
+    x_df = x_df.ix[19:-5].values
+    y_values = y_values.ix[19:-5, 0].values
+    return prices, x_df, y_values, indices
 
 
 def get_rmse(actual, predicted):
@@ -126,24 +139,24 @@ def get_correlation(actual, predicted):
     return c[0, 1]
 
 
-def get_future_prices(prices, actualY, predY, indecies):
+def get_future_prices(prices, actualY, predY, indices):
     symbol = prices.columns[0]
     df = prices.copy()
-    df['Train Y'] = pd.Series(actualY, index=indecies)
-    df['Predicted Y'] = pd.Series(predY, index=indecies)
+    df['Train Y'] = pd.Series(actualY, index=indices, copy=True)
+    df['Predicted Y'] = pd.Series(predY, index=indices, copy=True)
     df['Train Y'] = df[symbol] * (1 + df['Train Y'])
     df['Predicted Y'] = df[symbol] * (1 + df['Predicted Y'])
     return df
 
 
-def plot_Y(prices, actualY, predY, indecies, title=''):
+def plot_Y(prices, actualY, predY, indices, title=''):
     symbol = prices.columns[0]
     df = prices.copy()
-    df['Train Y'] = pd.Series(actualY, index=indecies)
-    df['Predicted Y'] = pd.Series(predY, index=indecies)
+    df['Train Y'] = pd.Series(actualY, index=indices, copy=True)
+    df['Predicted Y'] = pd.Series(predY, index=indices, copy=True)
     df['Train Y'] = df[symbol] * (1 + df['Train Y'])
     df['Predicted Y'] = df[symbol] * (1 + df['Predicted Y'])
-    ax = df[:50].plot(title=title)
+    ax = df.plot(title=title)
     ax.set_xlabel('Date')
     ax.set_ylabel('Price')
     plt.show()
@@ -151,7 +164,7 @@ def plot_Y(prices, actualY, predY, indecies, title=''):
 
 
 def get_positions(predY, indicies, threshold=0.01):
-    pos = pd.Series(predY, index=indicies)
+    pos = pd.Series(predY, index=indicies, copy=True)
     pos[pos > threshold] = 1.0
     pos[pos < -threshold] = -1.0
     pos[(pos <= threshold) & (pos >= -threshold)] = 0.0
@@ -186,9 +199,9 @@ def create_orders_file(orders, orders_file='orders.csv'):
 
 if __name__ == '__main__':
     args = parse_args()
-    prices, trainX, trainY, indecies = get_training_data(args.start_date,
-                                                         args.end_date,
-                                                         args.symbol)
+    prices, trainX, trainY, indices = get_learning_data(args.start_date,
+                                                        args.end_date,
+                                                        args.symbol)
 
     # create a learner and train it
     learner = setup_learner(args)
@@ -202,13 +215,32 @@ if __name__ == '__main__':
     print "In sample results"
     print "RMSE: ", rmse
     print "corr: ", corr
+    plot_Y(prices, trainY, predY, indices,
+           'Actual Y/Price/Predicted Y - {}'.format(args.symbol))
 
-    #df = plot_Y(prices, trainY, predY, indecies,
-                #'Training Y/Price/Predicted Y - ML4T-399')
-    df = get_future_prices(prices, trainY, predY, indecies)
+    positions = get_positions(predY, indices)
+    trades = get_trades(positions)
+    orders = generate_orders(args.symbol, trades)
+    create_orders_file(orders, 'train-{}'.format(args.orders))
+    plot_orders(orders, prices, predY, indices)
 
-    #positions = get_positions(predY, indicies)
-    #trades = get_trades(positions)
-    #orders = generate_orders(args.symbol, trades)
-    #create_orders_file(orders, args.orders)
-    #plot_orders(positions, prices, predY)
+    if args.start_test and args.end_test:
+        # evaluate out sample
+        prices, testX, testY, indices = get_learning_data(args.start_test,
+                                                          args.end_test,
+                                                          args.symbol)
+        predY = learner.query(testX)  # get the predictions
+        rmse = get_rmse(testY, predY)
+        corr = get_correlation(testY, predY)
+        print
+        print "In sample results"
+        print "RMSE: ", rmse
+        print "corr: ", corr
+
+        #plot_Y(prices, testY, predY, indices,
+            #'Actual Y/Price/Predicted Y - {}'.format(args.symbol)
+        positions = get_positions(predY, indices)
+        trades = get_trades(positions)
+        orders = generate_orders(args.symbol, trades)
+        create_orders_file(orders, 'test-{}'.format(args.orders))
+        plot_orders(orders, prices, predY, indices)
