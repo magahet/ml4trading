@@ -95,36 +95,16 @@ Figure 7 shows the portfolio performance using our KNN based trading strategy on
 
 #### Generated Trades
 
-IBM Data Out of Sample Entries/Exits: Freeze your model based on the 2008-2009 data. Now test it for the year 2010 -- Plot that illustrates entry & exits, generate trades,
+The KNN learner, trained with 2008-2009 samples, was used to predict and generate trades for the 2010 time period. We see the resulting orders, along with the predicted price change, on Figure 8. The price change plot shows that our learner predicts a number of large price changes that never actually take place. This is likely due to changing relationships between our trading indicators and predicted price change from 2008-2009 to 2010. Signals which predicted major price changes in a highly volatile market seem to create false signals in a time period with mostly stable prices.
+
+RMSE and Cor between predicted and actual price changes are 0.04 and 0.14 respectively on the 2010 data. This illustrates how poorly our learner predicted price changes after training on 2008-2009 data.
 
 ![Entries/Exits - IBM '10](output/ibm-orders-10.png)
 
 
 #### Trading Strategy Backtest
 
-IBM Data Out of Sample Backtest
+Results on the KNN learner trading in 2010 was predictably very poor given the out of sample error results. Cumulative return was 0.099, compared to 0.128 on SPY. The limitation of our trading strategy is likely due to our learner training on relationships within the data that changed between the two time periods. This clearly illustrates the danger of assuming historical relationships between technical indicators and predicted asset prices will continue to hold in the future.
+
 
 ![Backtest - IBM '10](output/ibm-perf-10.png)
-
-    Data Range: 2009-12-31 to 2010-12-31
-
-    Sharpe Ratio of Fund: 0.679632745049
-    Sharpe Ratio of $SPX: 0.756512754402
-
-    Cumulative Return of Fund: 0.0985
-    Cumulative Return of $SPX: 0.127827100708
-
-    Standard Deviation of Fund: 0.00983141011967
-    Standard Deviation of $SPX: 0.0113715303326
-
-    Average Daily Return of Fund: 0.000420910575847
-    Average Daily Return of $SPX: 0.000541919649169
-
-    Final Portfolio Value: 10985.0
-
-Learning results
-
-    In sample results
-    RMSE:  0.04283663904
-    corr:  0.140995673532
-
