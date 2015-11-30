@@ -6,7 +6,7 @@ date: November, 2015
 
 ## Overview
 
-We will evaluate the use of machine learning algorithms on creating trading strategies. Specifically, we will evaluate the use of KNN on forecasting future asset prices given a set of technical indicators.
+We will evaluate the use of machine learning algorithms in implementing trading strategies. Specifically, we will evaluate the use of KNN on forecasting future asset prices given a set of technical indicators.
 
 
 ### Regression Task
@@ -104,7 +104,7 @@ RMSE and Cor between predicted and actual price changes are 0.04 and 0.14 respec
 
 #### Trading Strategy Backtest
 
-Results on the KNN learner trading in 2010 was predictably very poor given the out of sample error results. Cumulative return was 0.099, compared to 0.128 on SPY. The limitation of our trading strategy is likely due to our learner training on relationships within the data that changed between the two time periods. This clearly illustrates the danger of assuming historical relationships between technical indicators and predicted asset prices will continue to hold in the future.
+Results on the KNN learner trading in 2010 was predictably very poor given the out of sample error results. Cumulative return was 0.099, compared to 0.128 on SPY. The limitation of our trading strategy is likely due to our learner training on relationships within the data that then changed between the two time periods. This clearly illustrates the danger of assuming historical relationships between technical indicators and predicted asset prices will continue to hold in the future.
 
 
 ![Backtest - IBM '10](output/ibm-perf-10.png)
