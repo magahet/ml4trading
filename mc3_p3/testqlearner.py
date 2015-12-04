@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 """
 Test a Q Learner in a navigation problem.  (c) 2015 Tucker Balch
 """
@@ -5,132 +6,179 @@ Test a Q Learner in a navigation problem.  (c) 2015 Tucker Balch
 import numpy as np
 import random as rand
 import time
-import math
 import QLearner as ql
+import matplotlib.pyplot as plt
+import pandas as pd
+import argparse
 
 # print out the map
+
+
 def printmap(data):
     print "--------------------"
     for row in range(0, data.shape[0]):
         for col in range(0, data.shape[1]):
-            if data[row,col] == 0:
+            if data[row, col] == 0:
                 print " ",
-            if data[row,col] == 1:
+            if data[row, col] == 1:
                 print "O",
-            if data[row,col] == 2:
+            if data[row, col] == 2:
                 print "*",
-            if data[row,col] == 3:
+            if data[row, col] == 3:
                 print "X",
-            if data[row,col] == 4:
+            if data[row, col] == 4:
                 print ".",
         print
     print "--------------------"
 
 # find where the robot is in the map
+
+
 def getrobotpos(data):
     R = -999
     C = -999
     for row in range(0, data.shape[0]):
         for col in range(0, data.shape[1]):
-            if data[row,col] == 2:
+            if data[row, col] == 2:
                 C = col
                 R = row
-    if (R+C)<0:
+    if (R + C) < 0:
         print "warning: start location not defined"
     return R, C
 
 # find where the goal is in the map
+
+
 def getgoalpos(data):
     R = -999
     C = -999
     for row in range(0, data.shape[0]):
         for col in range(0, data.shape[1]):
-            if data[row,col] == 3:
+            if data[row, col] == 3:
                 C = col
                 R = row
-    if (R+C)<0:
+    if (R + C) < 0:
         print "warning: goal location not defined"
     return (R, C)
 
 # move the robot according to the action and the map
-def movebot(data,oldpos,a):
+
+
+def movebot(data, oldpos, a):
     testr, testc = oldpos
 
     # update the test location
-    if a == 0: #north
+    if a == 0:  # north
         testr = testr - 1
-    elif a == 1: #east
+    elif a == 1:  # east
         testc = testc + 1
-    elif a == 2: #south
+    elif a == 2:  # south
         testr = testr + 1
-    elif a == 3: #west
+    elif a == 3:  # west
         testc = testc - 1
 
     # see if it is legal. if not, revert
-    if testr < 0: # off the map
+    if testr < 0:  # off the map
         testr, testc = oldpos
-    elif testr >= data.shape[0]: # off the map
+    elif testr >= data.shape[0]:  # off the map
         testr, testc = oldpos
-    elif testc < 0: # off the map
+    elif testc < 0:  # off the map
         testr, testc = oldpos
-    elif testc >= data.shape[1]: # off the map
+    elif testc >= data.shape[1]:  # off the map
         testr, testc = oldpos
-    elif data[testr, testc] == 1: # it is an obstacle
+    elif data[testr, testc] == 1:  # it is an obstacle
         testr, testc = oldpos
 
-    return (testr, testc) #return the new, legal location
+    return (testr, testc)  # return the new, legal location
 
 # convert the location to a single integer
+
+
 def discretize(pos):
-    return pos[0]*10 + pos[1]
+    return pos[0] * 10 + pos[1]
+
+
+def plot(data):
+    df = pd.DataFrame(data)
+    df.plot()
+    plt.show()
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description='Test QLearner')
+    parser.add_argument('worldfile', help='World File')
+    parser.add_argument('-i', '--iterations', type=int, default=10000,
+                        help='Number of training iterations.')
+    parser.add_argument('-d', '--dyna', type=int, default=0,
+                        help='Number of iterations of dyna training.')
+    parser.add_argument('-m', '--showmap', default=False, action='store_true',
+                        help='Show final map')
+    parser.add_argument('-p', '--plot', default=False, action='store_true',
+                        help='Plot training progress')
+    parser.add_argument('-v', '--verbose', default=False, action='store_true',
+                        help='Verbose')
+    return parser.parse_args()
+
 
 # run the code to test a learner
-if __name__=="__main__":
-
-    verbose = False #print lots of debug stuff if True
+if __name__ == "__main__":
+    args = parse_args()
 
     # read in the map
-    inf = open('testworlds/world01.csv')
-    data = np.array([map(float,s.strip().split(',')) for s in inf.readlines()])
-    originalmap = data.copy() #make a copy so we can revert to the original map later
+    inf = open(args.worldfile)
+    data = np.array(
+        [map(float, s.strip().split(',')) for s in inf.readlines()])
+    originalmap = data.copy(
+    )  # make a copy so we can revert to the original map later
 
-    startpos = getrobotpos(data) #find where the robot starts
-    goalpos = getgoalpos(data) #find where the goal is
+    startpos = getrobotpos(data)  # find where the robot starts
+    goalpos = getgoalpos(data)  # find where the goal is
 
-    if verbose: printmap(data)
+    if args.verbose:
+        printmap(data)
 
     rand.seed(5)
 
-    learner = ql.QLearner(num_states=100,\
-        num_actions = 4, \
-        rar = 0.98, \
-        radr = 0.9999, \
-        verbose=verbose) #initialize the learner
+    learner = ql.QLearner(num_states=100,
+                          num_actions=4,
+                          rar=0.98,
+                          radr=0.9999,
+                          dyna=args.dyna,
+                          verbose=args.verbose)  # initialize the learner
 
     #each iteration involves one trip to the goal
-    for iteration in range(0,10000): 
+    step_list = []
+    for iteration in range(0, args.iterations):
         steps = 0
         data = originalmap.copy()
         robopos = startpos
-        state = discretize(robopos) #convert the location to a state
-        action = learner.querysetstate(state) #set the state and get first action
+        state = discretize(robopos)  # convert the location to a state
+        action = learner.querysetstate(
+            state)  # set the state and get first action
         while robopos != goalpos:
 
             #move to new location according to action and then get a new action
-            newpos = movebot(data,robopos,action)
+            newpos = movebot(data, robopos, action)
             if newpos == goalpos:
-                r = 1 #reward for reaching the goal
+                r = 1  # reward for reaching the goal
             else:
-                r = -1 #negative reward for not being at the goal
+                r = -1  # negative reward for not being at the goal
             state = discretize(newpos)
-            action = learner.query(state,r)
+            action = learner.query(state, r)
 
-            data[robopos] = 4 # mark where we've been for map printing
-            data[newpos] = 2 # move to new location
-            robopos = newpos # update the location
-            if verbose: printmap(data)
-            if verbose: time.sleep(1)
+            data[robopos] = 4  # mark where we've been for map printing
+            data[newpos] = 2  # move to new location
+            robopos = newpos  # update the location
+            if args.verbose:
+                printmap(data)
+            if args.verbose:
+                time.sleep(1)
             steps += 1
 
-        print iteration, "," , steps
-    printmap(data)
+        if args.verbose:
+            print iteration, ",", steps
+        step_list.append(steps)
+    if args.showmap:
+        printmap(data)
+    if args.plot:
+        plot(step_list)
