@@ -28,14 +28,16 @@ class T(object):
 
     def __init__(self, num_states, num_actions):
         self.Tc = np.ones((num_states, num_actions, num_states)) * 0.00001
+        self.T = np.zeros((num_states, num_actions, num_states))
         self.states = range(num_states)
 
     def update(self, s, a, s_prime):
         self.Tc[s, a, s_prime] += 1
+        self.T[s, a] = self.Tc[s, a] / self.Tc[s, a].sum()
 
     def query(self, s, a):
-        p = self.Tc[s, a] / self.Tc[s, a].sum()
-        return np.random.choice(self.states, p=p)
+        #return np.random.choice(self.states, p=self.T[s, a])
+        return np.random.multinomial(1, self.T[s, a]).argmax()
 
 
 class R(object):
