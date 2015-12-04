@@ -28,13 +28,14 @@ class T(object):
 
     def __init__(self, num_states, num_actions):
         self.Tc = np.ones((num_states, num_actions, num_states)) * 0.00001
+        self.states = range(num_states)
 
     def update(self, s, a, s_prime):
         self.Tc[s, a, s_prime] += 1
 
     def query(self, s, a):
         p = self.Tc[s, a] / self.Tc[s, a].sum()
-        return np.random.choice(range(len(p)), p=p)
+        return np.random.choice(self.states, p=p)
 
 
 class R(object):
@@ -73,6 +74,7 @@ class QLearner(object):
         self.Q = Q(num_states, num_actions, alpha, gamma)
         self.T = T(num_states, num_actions)
         self.R = R(num_states, num_actions, alpha)
+        self.observed_sa_pairs = set()
 
     def querysetstate(self, s):
         """
@@ -93,28 +95,31 @@ class QLearner(object):
         @param r: The ne state
         @returns: The selected action
         """
-        self.Q.update(self.s, self.a, s_prime, r)
+        s = self.s
+        a = self.a
+        self.observed_sa_pairs.add((s, a))
+
+        self.Q.update(s, a, s_prime, r)
 
         action = self.get_action(s_prime)
-
-        # decay random action rate by radr
-        self.rar *= self.radr
 
         # save state and action to update Q on next query
         self.s = s_prime
         self.a = action
+
+        # decay random action rate by radr
+        self.rar *= self.radr
 
         if self.verbose:
             print "s =", s_prime, "a =", action, "r =", r
 
         if self.dyna:
             # update model of T and R
-            self.T.update(self.s, self.a, s_prime)
-            self.R.update(self.s, self.a, r)
+            self.T.update(s, a, s_prime)
+            self.R.update(s, a, r)
 
             for _ in range(self.dyna):
-                s = rand.randrange(self.num_states)
-                a = rand.randrange(self.num_actions)
+                s, a = rand.choice(tuple(self.observed_sa_pairs))
                 s_prime = self.T.query(s, a)
                 r = self.R.query(s, a)
                 self.Q.update(s, a, s_prime, r)
