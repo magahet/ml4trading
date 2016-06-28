@@ -60,8 +60,8 @@ class QLearner(object):
                  num_actions=4,
                  alpha=0.2,
                  gamma=0.9,
-                 rar=0.5,
-                 radr=0.99,
+                 rar=0.98,
+                 radr=0.999,
                  dyna=0,
                  verbose=False):
 

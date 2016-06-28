@@ -139,12 +139,26 @@ if __name__ == "__main__":
 
     rand.seed(5)
 
-    learner = ql.QLearner(num_states=100,
-                          num_actions=4,
-                          rar=0.98,
-                          radr=0.9999,
-                          dyna=args.dyna,
-                          verbose=args.verbose)  # initialize the learner
+    if not args.dyna:
+        learner = ql.QLearner(
+            num_states=100,
+            num_actions=4,
+            alpha=0.2,
+            gamma=0.9,
+            rar=0.98,
+            radr=0.999,
+            dyna=0,
+            verbose=False)  # initialize the learner
+    else:
+        learner = ql.QLearner(
+            num_states=100,
+            num_actions=4,
+            alpha=0.2,
+            gamma=0.9,
+            rar=0.5,
+            radr=0.99,
+            dyna=100,
+            verbose=False)  # initialize the learner
 
     #each iteration involves one trip to the goal
     step_list = []
@@ -182,3 +196,5 @@ if __name__ == "__main__":
         printmap(data)
     if args.plot:
         plot(step_list)
+    print 'results for {}'.format(args.worldfile)
+    print '{} iterations {} steps'.format(args.iterations, steps)
